@@ -1,0 +1,46 @@
+setwd("~/GitHub/ProteinClassification")
+rm(list = ls())
+
+library(protr)
+
+main_data.filename = "family/dataset/family_seq_meta.csv"
+main_data = read.csv(main_data.filename, stringsAsFactors = FALSE)
+
+if(exists("main_data.clean")){
+  rm("main_data.clean")
+}
+
+error_msg = ""
+
+for(i in 1:nrow(main_data)){
+  datum = main_data[i,]
+  
+  tryCatch({
+    class = as.character(datum$Class)
+    seq = as.character(datum$Seq)
+    
+    error_msg = "AAC"
+    num_feature.test = extractAAC(seq)
+    
+    error_msg = "CTDC"
+    num_feature.test = extractCTDC(seq)
+    
+    error_msg = "CTDD"
+    num_feature.test = extractCTDD(seq)
+    
+    error_msg = "CTDT"
+    num_feature.test = extractCTDT(seq)
+    
+    if(!exists("main_data.clean")){
+      assign("main_data.clean", datum)
+    } else {
+      main_data.clean = rbind.data.frame(main_data.clean, datum)
+    }
+  }, error = function(err){
+    print(paste("error -",error_msg,":",i,seq))
+  })
+}
+
+colnames(main_data.clean) = c("ID", "Seq", "FamilyID", "FamilyDesc")
+write.csv(main_data.clean, "family/dataset/family_seq_meta.clean.ver2.csv", row.names = FALSE)
+

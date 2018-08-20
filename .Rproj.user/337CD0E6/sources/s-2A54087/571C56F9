@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1534480085968.000,
+    "dirty" : false,
+    "encoding" : "ISO8859-1",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "571C56F9",
+    "lastKnownWriteTime" : 1534485201,
+    "last_content_update" : 1534485201716,
+    "path" : "C:/Users/faisal/OneDrive - eSevens/HD Backup/My University/Study/Kanazawa University/Riset/Code/R/ProtSegR/ProtSegR/R/convertToFeatureRepresentationByDescriptor.R",
+    "project_path" : "R/convertToFeatureRepresentationByDescriptor.R",
+    "properties" : {
+        "cursorPosition" : "17,0",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

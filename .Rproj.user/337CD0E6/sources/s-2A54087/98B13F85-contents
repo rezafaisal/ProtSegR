@@ -1,0 +1,650 @@
+setwd("~/GitHub/ProteinClassification")
+rm(list = ls())
+
+library(protr)
+library(stringr)
+
+paac_lambda = 20
+
+dividers = c(1,2,3)
+method_names = c("paac", "aac", "ctdc", "dc")
+method_names = c("aac", "ctdc", "dc")
+dataset_name = "CPPsite1.ALL"
+main_data.filename = paste0(dataset_name, ".removed.csv")
+main_data = read.csv(paste0("InSilicoPeptide/dataset/", main_data.filename), stringsAsFactors = FALSE)
+
+nchar_init = 100000
+nchar_sub = 2
+nchar_segment1 = nchar_init
+nchar_segment2 = nchar_init
+nchar_segment3 = nchar_init
+nchar_segment4 = nchar_init
+nchar_segment5 = nchar_init
+
+print(dataset_name)
+
+#AAC --------------------------------------------------------------------------- start
+method_name = "AAC"
+for(divider_i in dividers){
+  if(exists("main_data.num")){
+    rm("main_data.num")
+  }
+  
+  #jika divider == 1
+  if(divider_i == 1){
+    for(i in 1:nrow(main_data)){
+      datum = main_data[i,]
+      
+      tryCatch({
+        class = as.character(datum$Class)
+        seq = as.character(datum$Seq)
+        
+        # validasi sequence
+        # jika proses ini gagal maka baris yang di bawah di dalam blok ini tidak akan dieksekusi
+        # dilanjutkan dengan sample berikutnya
+        num_feature = extractAAC(seq)
+        
+        datum.num = cbind(t(num_feature), class)
+        
+        if(!exists("main_data.num")){
+          assign("main_data.num", datum.num)
+        } else {
+          main_data.num = rbind.data.frame(main_data.num, datum.num)
+        }
+        
+        # memeriksa seq terkecil
+        nchar_temp = nchar(seq)
+        if(nchar_segment1 > nchar_temp){
+          nchar_segment1 = nchar_temp
+        }
+        
+      }, error = function(err){
+        print(paste("error AAC:",i,seq))
+      })
+    }
+    
+    colnames(main_data.num) = paste0(method_name, divider_i, ".", colnames(main_data.num))
+    colnames(main_data.num)[ncol(main_data.num)] = "class_label"
+    print("-------------------------------------------------------------------")
+    print(dim(main_data.num))
+    write.csv(main_data.num, paste0("InSilicoPeptide/overlapped/",dataset_name,"-aac-overlapped-divider-",divider_i,".csv"), row.names = FALSE, quote = FALSE)
+  }
+  # jika divider > 1
+  else {
+    for(i in 1:nrow(main_data)){
+      datum = main_data[i,]
+      
+      tryCatch({
+        class = as.character(datum$Class)
+        seq = as.character(datum$Seq)
+        
+        # validasi sequence
+        # jika proses ini gagal maka baris yang di bawah di dalam blok ini tidak akan dieksekusi
+        # dilanjutkan dengan sample berikutnya
+        num_feature.test = extractAAC(seq)
+        
+        seq.length = nchar(seq)
+        part_length = round(seq.length/divider_i)
+        
+        # memeriksa seq terkecil
+        if(divider_i == 2){
+          if(nchar_segment2 > part_length){
+            nchar_segment2 = part_length
+          }
+        } else if(divider_i == 3){
+          if(nchar_segment3 > part_length){
+            nchar_segment3 = part_length
+          }
+        } else if(divider_i == 4){
+          if(nchar_segment4 > part_length){
+            nchar_segment4 = part_length
+          }
+        } else if(divider_i == 5){
+          if(nchar_segment5 > part_length){
+            nchar_segment5 = part_length
+          }
+        }
+        
+        
+        if(exists("num_feature")){
+          rm("num_feature")
+        }
+        
+        if(exists("start_point")){
+          rm("start_point")
+        }
+        
+        #perhitungan feature dari awal sampai akhir
+        #------------------------------------------ start
+        for(j in 1:divider_i){
+          if(j > 1){
+            start = ((j - 1) * part_length) + 1
+            end = j * part_length
+            
+            if(j == divider_i){
+              end = seq.length
+            }
+          } else {
+            start = 1
+            end = part_length
+          }
+          
+          seq.part = substr(seq, start, end)
+          
+          if(!exists("num_feature")){
+            assign("num_feature", cbind(extractAAC(seq.part)))
+          } else {
+            num_feature = rbind(num_feature, cbind(extractAAC(seq.part)))
+          }
+          
+          if(!exists("start_point")){
+            assign("start_point", start)
+          } else {
+            start_point = rbind(start_point, start)
+          }
+        }
+        #------------------------------------------ end
+        
+        #perhitungan feature antara 2 segment 
+        #------------------------------------------ start
+        start_point = start_point[2:nrow(start_point),]
+        part_length.half = floor(part_length/2)
+        if(part_length.half == 0){
+          part_length.half = 1
+        }
+        
+        for(start_point_i in start_point){
+          start = start_point_i - part_length.half
+          end = start_point_i + part_length.half
+          
+          seq.part = substr(seq, start, end)
+          
+          if(!exists("num_feature")){
+            assign("num_feature", cbind(extractAAC(seq.part)))
+          } else {
+            num_feature = rbind(num_feature, cbind(extractAAC(seq.part)))
+          }
+        }
+        #------------------------------------------ end
+        
+        datum.num = cbind(t(num_feature), class)
+        
+        if(!exists("main_data.num")){
+          assign("main_data.num", datum.num)
+        } else {
+          main_data.num = rbind.data.frame(main_data.num, datum.num)
+        }
+      }, error = function(err){
+        print(paste("error AAC:",i,seq))
+      })
+    }
+    
+    colnames(main_data.num) = paste0(method_name, divider_i, ".", colnames(main_data.num))
+    colnames(main_data.num)[ncol(main_data.num)] = "class_label"
+    print("-------------------------------------------------------------------")
+    print(dim(main_data.num))
+    write.csv(main_data.num, paste0("InSilicoPeptide/overlapped/",dataset_name,"-aac-overlapped-divider-",divider_i,".csv"), row.names = FALSE, quote = FALSE)
+  }
+}
+#AAC --------------------------------------------------------------------------- end
+
+print(paste(nchar_segment1, nchar_segment2, nchar_segment3, nchar_segment4, nchar_segment5))
+print("------------------------------------------------------------------------------------")
+
+# #PAAC --------------------------------------------------------------------------- start
+# method_name = "PAAC"
+# for(divider_i in dividers){
+#   if(exists("main_data.num")){
+#     rm("main_data.num")
+#   }
+# 
+#   if(divider_i == 1){
+#     paac_lambda = nchar_segment1 - nchar_sub
+#   } else if(divider_i == 2){
+#     paac_lambda = nchar_segment2 - nchar_sub
+#   } else if(divider_i == 3){
+#     paac_lambda = nchar_segment3 - nchar_sub
+#   } else if(divider_i == 4){
+#     paac_lambda = nchar_segment4 - nchar_sub
+#   }else if(divider_i == 5){
+#     paac_lambda = nchar_segment5 - nchar_sub
+#   }
+# 
+#   #jika divider == 1
+#   if(divider_i == 1){
+#     for(i in 1:nrow(main_data)){
+#       datum = main_data[i,]
+# 
+#       tryCatch({
+#         class = as.character(datum$Class)
+#         seq = as.character(datum$Seq)
+# 
+#         # validasi sequence
+#         # jika proses ini gagal maka baris yang di bawah di dalam blok ini tidak akan dieksekusi
+#         # dilanjutkan dengan sample berikutnya
+#         num_feature = extractPAAC(seq, lambda = paac_lambda)
+# 
+#         datum.num = cbind(t(num_feature), class)
+# 
+#         if(!exists("main_data.num")){
+#           assign("main_data.num", datum.num)
+#         } else {
+#           main_data.num = rbind.data.frame(main_data.num, datum.num)
+#         }
+#       }, error = function(err){
+#         print(paste("error PAAC:",i,seq))
+#       })
+#     }
+# 
+#     colnames(main_data.num) = paste0(method_name, divider_i, ".", colnames(main_data.num))
+#     colnames(main_data.num)[ncol(main_data.num)] = "class_label"
+#     print("-------------------------------------------------------------------")
+#     print(dim(main_data.num))
+#     write.csv(main_data.num, paste0("InSilicoPeptide/overlapped/",dataset_name,"-paac-overlapped-divider-",divider_i,".csv"), row.names = FALSE, quote = FALSE)
+#   }
+#   # jika divider > 1
+#   else {
+#     for(i in 1:nrow(main_data)){
+#       datum = main_data[i,]
+# 
+#       tryCatch({
+#         class = as.character(datum$Class)
+#         seq = as.character(datum$Seq)
+# 
+#         # validasi sequence
+#         # jika proses ini gagal maka baris yang di bawah di dalam blok ini tidak akan dieksekusi
+#         # dilanjutkan dengan sample berikutnya
+#         num_feature.test = extractPAAC(seq, lambda = paac_lambda)
+# 
+#         seq.length = nchar(seq)
+#         part_length = round(seq.length/divider_i)
+# 
+#         if(exists("num_feature")){
+#           rm("num_feature")
+#         }
+# 
+#         if(exists("start_point")){
+#           rm("start_point")
+#         }
+# 
+#         #perhitungan feature dari awal sampai akhir
+#         #------------------------------------------ start
+#         for(j in 1:divider_i){
+#           if(j > 1){
+#             start = ((j - 1) * part_length) + 1
+#             end = j * part_length
+# 
+#             if(j == divider_i){
+#               end = seq.length
+#             }
+#           } else {
+#             start = 1
+#             end = part_length
+#           }
+# 
+#           seq.part = substr(seq, start, end)
+# 
+#           if(!exists("num_feature")){
+#             assign("num_feature", cbind(extractPAAC(seq.part, lambda = paac_lambda)))
+#           } else {
+#             num_feature = rbind(num_feature, cbind(extractPAAC(seq.part, lambda = paac_lambda)))
+#           }
+# 
+#           if(!exists("start_point")){
+#             assign("start_point", start)
+#           } else {
+#             start_point = rbind(start_point, start)
+#           }
+#         }
+#         #------------------------------------------ end
+# 
+#         #perhitungan feature antara 2 segment
+#         #------------------------------------------ start
+#         start_point = start_point[2:nrow(start_point),]
+#         part_length.half = floor(part_length/2)
+#         if(part_length.half == 0){
+#           part_length.half = 1
+#         }
+# 
+#         for(start_point_i in start_point){
+#           start = start_point_i - part_length.half
+#           end = start_point_i + part_length.half
+# 
+#           seq.part = substr(seq, start, end)
+# 
+#           if(!exists("num_feature")){
+#             assign("num_feature", cbind(extractPAAC(seq.part, lambda = paac_lambda)))
+#           } else {
+#             num_feature = rbind(num_feature, cbind(extractPAAC(seq.part, lambda = paac_lambda)))
+#           }
+#         }
+#         #------------------------------------------ end
+# 
+#         datum.num = cbind(t(num_feature), class)
+# 
+#         if(!exists("main_data.num")){
+#           assign("main_data.num", datum.num)
+#         } else {
+#           main_data.num = rbind.data.frame(main_data.num, datum.num)
+#         }
+#       }, error = function(err){
+#         print(paste(divider_i, "error PAAC:",i,seq, err))
+#       })
+#     }
+# 
+#     colnames(main_data.num) = paste0(method_name, divider_i, ".", colnames(main_data.num))
+#     colnames(main_data.num)[ncol(main_data.num)] = "class_label"
+#     print("-------------------------------------------------------------------")
+#     print(dim(main_data.num))
+#     write.csv(main_data.num, paste0("InSilicoPeptide/overlapped/",dataset_name,"-paac-overlapped-divider-",divider_i,".csv"), row.names = FALSE, quote = FALSE)
+#   }
+# }
+# #PAAC --------------------------------------------------------------------------- end
+
+
+#CTDC --------------------------------------------------------------------------- start
+method_name = "CTDC"
+for(divider_i in dividers){
+  if(exists("main_data.num")){
+    rm("main_data.num")
+  }
+  
+  #jika divider == 1
+  if(divider_i == 1){
+    for(i in 1:nrow(main_data)){
+      datum = main_data[i,]
+      
+      tryCatch({
+        class = as.character(datum$Class)
+        seq = as.character(datum$Seq)
+        
+        # validasi sequence
+        # jika proses ini gagal maka baris yang di bawah di dalam blok ini tidak akan dieksekusi
+        # dilanjutkan dengan sample berikutnya
+        num_feature = extractCTDC(seq)
+        
+        datum.num = cbind(t(num_feature), class)
+        
+        if(!exists("main_data.num")){
+          assign("main_data.num", datum.num)
+        } else {
+          main_data.num = rbind.data.frame(main_data.num, datum.num)
+        }
+      }, error = function(err){
+        print(paste("error CTDC:",i,seq))
+      })
+    }
+    
+    colnames(main_data.num) = paste0(method_name, divider_i, ".", colnames(main_data.num))
+    colnames(main_data.num)[ncol(main_data.num)] = "class_label"
+    print("-------------------------------------------------------------------")
+    print(dim(main_data.num))
+    write.csv(main_data.num, paste0("InSilicoPeptide/overlapped/",dataset_name,"-ctdc-overlapped-divider-",divider_i,".csv"), row.names = FALSE, quote = FALSE)
+  }
+  # jika divider > 1
+  else {
+    for(i in 1:nrow(main_data)){
+      datum = main_data[i,]
+      
+      tryCatch({
+        class = as.character(datum$Class)
+        seq = as.character(datum$Seq)
+        
+        # validasi sequence
+        # jika proses ini gagal maka baris yang di bawah di dalam blok ini tidak akan dieksekusi
+        # dilanjutkan dengan sample berikutnya
+        num_feature.test = extractCTDC(seq)
+        
+        seq.length = nchar(seq)
+        part_length = round(seq.length/divider_i)
+        
+        if(exists("num_feature")){
+          rm("num_feature")
+        }
+        
+        if(exists("start_point")){
+          rm("start_point")
+        }
+        
+        #perhitungan feature dari awal sampai akhir
+        #------------------------------------------ start
+        for(j in 1:divider_i){
+          if(j > 1){
+            start = ((j - 1) * part_length) + 1
+            end = j * part_length
+            
+            if(j == divider_i){
+              end = seq.length
+            }
+          } else {
+            start = 1
+            end = part_length
+          }
+          
+          seq.part = substr(seq, start, end)
+          
+          if(!exists("num_feature")){
+            assign("num_feature", cbind(extractCTDC(seq.part)))
+          } else {
+            num_feature = rbind(num_feature, cbind(extractCTDC(seq.part)))
+          }
+          
+          if(!exists("start_point")){
+            assign("start_point", start)
+          } else {
+            start_point = rbind(start_point, start)
+          }
+        }
+        #------------------------------------------ end
+        
+        #perhitungan feature antara 2 segment 
+        #------------------------------------------ start
+        start_point = start_point[2:nrow(start_point),]
+        part_length.half = floor(part_length/2)
+        if(part_length.half == 0){
+          part_length.half = 1
+        }
+        
+        for(start_point_i in start_point){
+          start = start_point_i - part_length.half
+          end = start_point_i + part_length.half
+          
+          seq.part = substr(seq, start, end)
+          
+          if(!exists("num_feature")){
+            assign("num_feature", cbind(extractCTDC(seq.part)))
+          } else {
+            num_feature = rbind(num_feature, cbind(extractCTDC(seq.part)))
+          }
+        }
+        #------------------------------------------ end
+        
+        datum.num = cbind(t(num_feature), class)
+        
+        if(!exists("main_data.num")){
+          assign("main_data.num", datum.num)
+        } else {
+          main_data.num = rbind.data.frame(main_data.num, datum.num)
+        }
+      }, error = function(err){
+        print(paste("error CTDC:",i,seq))
+      })
+    }
+    
+    colnames(main_data.num) = paste0(method_name, divider_i, ".", colnames(main_data.num))
+    colnames(main_data.num)[ncol(main_data.num)] = "class_label"
+    print("-------------------------------------------------------------------")
+    print(dim(main_data.num))
+    write.csv(main_data.num, paste0("InSilicoPeptide/overlapped/",dataset_name,"-ctdc-overlapped-divider-",divider_i,".csv"), row.names = FALSE, quote = FALSE)
+  }
+}
+#CTDC --------------------------------------------------------------------------- end
+
+
+#DC --------------------------------------------------------------------------- start
+method_name = "DC"
+for(divider_i in dividers){
+  if(exists("main_data.num")){
+    rm("main_data.num")
+  }
+  
+  #jika divider == 1
+  if(divider_i == 1){
+    for(i in 1:nrow(main_data)){
+      datum = main_data[i,]
+      
+      tryCatch({
+        class = as.character(datum$Class)
+        seq = as.character(datum$Seq)
+        
+        # validasi sequence
+        # jika proses ini gagal maka baris yang di bawah di dalam blok ini tidak akan dieksekusi
+        # dilanjutkan dengan sample berikutnya
+        num_feature = extractDC(seq)
+        
+        datum.num = cbind(t(num_feature), class)
+        
+        if(!exists("main_data.num")){
+          assign("main_data.num", datum.num)
+        } else {
+          main_data.num = rbind.data.frame(main_data.num, datum.num)
+        }
+      }, error = function(err){
+        print(paste("error DC:",i,seq))
+      })
+    }
+    
+    colnames(main_data.num) = paste0(method_name, divider_i, ".", colnames(main_data.num))
+    colnames(main_data.num)[ncol(main_data.num)] = "class_label"
+    print("-------------------------------------------------------------------")
+    print(dim(main_data.num))
+    write.csv(main_data.num, paste0("InSilicoPeptide/overlapped/",dataset_name,"-dc-overlapped-divider-",divider_i,".csv"), row.names = FALSE, quote = FALSE)
+  }
+  # jika divider > 1
+  else {
+    for(i in 1:nrow(main_data)){
+      datum = main_data[i,]
+      
+      tryCatch({
+        class = as.character(datum$Class)
+        seq = as.character(datum$Seq)
+        
+        # validasi sequence
+        # jika proses ini gagal maka baris yang di bawah di dalam blok ini tidak akan dieksekusi
+        # dilanjutkan dengan sample berikutnya
+        num_feature.test = extractDC(seq)
+        
+        seq.length = nchar(seq)
+        part_length = round(seq.length/divider_i)
+        
+        if(exists("num_feature")){
+          rm("num_feature")
+        }
+        
+        if(exists("start_point")){
+          rm("start_point")
+        }
+        
+        #perhitungan feature dari awal sampai akhir
+        #------------------------------------------ start
+        for(j in 1:divider_i){
+          if(j > 1){
+            start = ((j - 1) * part_length) + 1
+            end = j * part_length
+            
+            if(j == divider_i){
+              end = seq.length
+            }
+          } else {
+            start = 1
+            end = part_length
+          }
+          
+          seq.part = substr(seq, start, end)
+          
+          if(!exists("num_feature")){
+            assign("num_feature", cbind(extractDC(seq.part)))
+          } else {
+            num_feature = rbind(num_feature, cbind(extractDC(seq.part)))
+          }
+          
+          if(!exists("start_point")){
+            assign("start_point", start)
+          } else {
+            start_point = rbind(start_point, start)
+          }
+        }
+        #------------------------------------------ end
+        
+        #perhitungan feature antara 2 segment 
+        #------------------------------------------ start
+        start_point = start_point[2:nrow(start_point),]
+        part_length.half = floor(part_length/2)
+        if(part_length.half == 0){
+          part_length.half = 1
+        }
+        
+        for(start_point_i in start_point){
+          start = start_point_i - part_length.half
+          end = start_point_i + part_length.half
+          
+          seq.part = substr(seq, start, end)
+          
+          if(!exists("num_feature")){
+            assign("num_feature", cbind(extractDC(seq.part)))
+          } else {
+            num_feature = rbind(num_feature, cbind(extractDC(seq.part)))
+          }
+        }
+        #------------------------------------------ end
+        
+        datum.num = cbind(t(num_feature), class)
+        
+        if(!exists("main_data.num")){
+          assign("main_data.num", datum.num)
+        } else {
+          main_data.num = rbind.data.frame(main_data.num, datum.num)
+        }
+      }, error = function(err){
+        print(paste("error DC:",i,seq))
+      })
+    }
+    
+    colnames(main_data.num) = paste0(method_name, divider_i, ".", colnames(main_data.num))
+    colnames(main_data.num)[ncol(main_data.num)] = "class_label"
+    print("-------------------------------------------------------------------")
+    print(dim(main_data.num))
+    write.csv(main_data.num, paste0("InSilicoPeptide/overlapped/",dataset_name,"-dc-overlapped-divider-",divider_i,".csv"), row.names = FALSE, quote = FALSE)
+  }
+}
+#DC --------------------------------------------------------------------------- end
+
+
+#Unite All --------------------------------------------------------------------------- start
+if(exists("main_data.united")){
+  rm("main_data.united")
+}
+
+for(method_i in method_names){
+  for(divider_i in dividers){
+    main_data.united.filedname = paste0("InSilicoPeptide/overlapped/", dataset_name,"-",method_i,"-overlapped-divider-", divider_i,".csv")
+    main_data.united.temp = read.csv(main_data.united.filedname, stringsAsFactors = FALSE)
+    main_data.united.temp.class = main_data.united.temp$class_label
+      
+    if(!exists("main_data.united")){
+      assign("main_data.united", main_data.united.temp[,-ncol(main_data.united.temp)])
+      assign("main_data.united.class", main_data.united.temp$class_label)
+    } else {
+      if(identical(main_data.united.class, main_data.united.temp.class)){
+        main_data.united = cbind.data.frame(main_data.united, main_data.united.temp[,-ncol(main_data.united.temp)])
+      } else {
+        print(paste0(dataset_name,"-",method_i,"-overlapped-divider-", divider_i,".csv"))
+      }
+    }
+  }
+}
+main_data.united = cbind.data.frame(main_data.united, main_data.united.class)
+colnames(main_data.united)[ncol(main_data.united)] = "class_label"
+write.csv(main_data.united, paste0("InSilicoPeptide/all-overlapped/",dataset_name,"-all-overlapped.csv"), row.names = FALSE)
+#Unite All --------------------------------------------------------------------------- end
+

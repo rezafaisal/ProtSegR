@@ -1,0 +1,38 @@
+# ConvertToFeatureRepresentation
+# =========================================================================
+# This function generate feature representation from original sequence, adjacent and overlapped segments
+#
+# You can learn more about package authoring with RStudio at:
+#
+#   http://r-pkgs.had.co.nz/
+#
+# Some useful keyboard shortcuts for package authoring:
+#
+#   Build and Reload Package:  'Ctrl + Shift + B'
+#   Check Package:             'Ctrl + Shift + E'
+#   Test Package:              'Ctrl + Shift + T'
+
+
+ConvertToFeatureRepresentationByDescriptor <- function(seq_str, prot_desc) {
+  library(protr)
+
+  feature_representation = ""
+
+  if(prot_desc == "AAC"){
+    feature_representation = extractAAC(seq_str)
+  }
+  else if(prot_desc == "DC"){
+    feature_representation = extractDC(seq_str)
+  }
+  else if(prot_desc == "CTDC"){
+    feature_representation = extractCTDC(seq_str)
+  }
+  else if(prot_desc == "CTDT"){
+    feature_representation = extractCTDT(seq_str)
+  }
+  else if(prot_desc == "CTDD"){
+    feature_representation = extractCTDD(seq_str)
+  }
+
+  return(feature_representation)
+}

@@ -1,0 +1,56 @@
+setwd("~/GitHub/ProteinClassification")
+rm(list = ls())
+
+library(protr)
+
+main_data.filename = "binding/dataset/s2-binding-all.csv"
+main_data = read.csv(main_data.filename, stringsAsFactors = FALSE)
+
+if(exists("main_data.clean")){
+  rm("main_data.clean")
+}
+
+error_msg = ""
+
+for(i in 1:nrow(main_data)){
+  datum = main_data[i,]
+  
+  tryCatch({
+    class = as.character(datum$Class)
+    seq = as.character(datum$Seq)
+    
+    #remove B, J, X, Z in seq
+    seq =  gsub("B", "", seq)
+    seq =  gsub("J", "", seq)
+    seq =  gsub("X", "", seq)
+    seq =  gsub("Z", "", seq)
+    seq =  gsub("U", "", seq)
+    seq =  gsub("O", "", seq)
+    
+    error_msg = "AAC"
+    num_feature.test = extractAAC(seq)
+    
+    error_msg = "CTDC"
+    num_feature.test = extractCTDC(seq)
+    
+    error_msg = "CTDD"
+    num_feature.test = extractCTDD(seq)
+    
+    error_msg = "CTDT"
+    num_feature.test = extractCTDT(seq)
+    
+    datum$Seq = seq
+    
+    if(!exists("main_data.clean")){
+      assign("main_data.clean", datum)
+    } else {
+      main_data.clean = rbind.data.frame(main_data.clean, datum)
+    }
+  }, error = function(err){
+    print(paste("error -",error_msg,":",i,seq))
+  })
+}
+
+colnames(main_data.clean) = c("Seq", "Class")
+write.csv(main_data.clean, "binding/dataset/s2-binding-all.removed.csv", row.names = FALSE, quote = FALSE)
+
